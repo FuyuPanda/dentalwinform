@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DentaSoft.Common\DentaSoft.Common.csproj" />
+    <ProjectReference Include="..\DentaSoft.Model\DentaSoft.Model.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">

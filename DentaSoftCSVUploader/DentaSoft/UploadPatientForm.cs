@@ -1,5 +1,4 @@
-﻿using DentaSoft.Common.Common;
-using DentaSoft.Common.Validation;
+﻿using DentaSoft.Common.Validation;
 using Microsoft.Data.SqlClient;
 using Microsoft.VisualBasic.FileIO;
 using System;
@@ -57,26 +56,41 @@ namespace DentaSoft
                 string[] row = parser.ReadFields();
 
                 var newRow = dt.NewRow();
-                bool hasError = false;
+                
                 string errorMessages = "";
-
+                List<string> mandatoryFields = new List<string>() { "FirstName", "LastName" };
                 for (var i = 0; i < headers.Length; i++)
                 {
                     newRow[i] = row[i];
 
-                    if (string.IsNullOrWhiteSpace(newRow[i].ToString()))
+                    if (mandatoryFields.Contains(headers[i]))
                     {
-                        hasError = true;
-                        errorMessages += $"{headers[i]} is required|";
+                        if (string.IsNullOrWhiteSpace(newRow[i].ToString()))
+                        {
+                            errorMessages += $"{headers[i]} is required|";
+                        }
                     }
+
 
                     if (headers[i].Equals("MobileNumber"))
                     {
+                        newRow["MobileNumber"]=newRow["MobileNumber"].ToString().Trim().Replace(" ", "");
                         string mobileNumber = newRow["MobileNumber"].ToString();
-                        string mobileNumberValidation = validation.MobilePhoneValidation(mobileNumber);
+                        string mobileNumberValidation = validation.MobilePhoneValidation("Mobile",mobileNumber);
                         if (mobileNumberValidation != "Success")
                         {
                             errorMessages += mobileNumberValidation + "|";
+                        }
+                    }
+
+                    if (headers[i].Equals("PhoneNumber"))
+                    {
+                        newRow["PhoneNumber"]=newRow["PhoneNumber"].ToString().Trim().Replace(" ", "");
+                        string phoneNumber = newRow["PhoneNumber"].ToString();
+                        string phoneNumberValidation = validation.MobilePhoneValidation("Phone",phoneNumber);
+                        if (phoneNumberValidation != "Success")
+                        {
+                            errorMessages += phoneNumberValidation + "|";
                         }
                     }
 
@@ -91,6 +105,7 @@ namespace DentaSoft
 
             dataGridView1.DataSource = dt;
         }
+
 
         private void btnUpload_Click(object sender, EventArgs e)
         {
@@ -111,16 +126,19 @@ namespace DentaSoft
 
             DataTable validTable = dt.Clone();
             DataTable invalidTable = dt.Clone();
-            IdentifierGenerator identifierGenerator = new IdentifierGenerator();
+            var identifier = "PT";
+            bool hasError = false;
 
 
             foreach (DataRow row in dt.Rows)
             {
                 row["Deleted"] = false;
-                row["PatientIdentifier"] = identifierGenerator.Generate("PT");
+                row["PatientIdentifier"] = identifier + "-" + row["Id"];
                 if (!string.IsNullOrWhiteSpace(row["ErrorMessage"].ToString()))
                 {
+                    hasError = true;
                     invalidTable.ImportRow(row);
+                    
                 }
                 else
                 {
@@ -153,23 +171,44 @@ namespace DentaSoft
             bulkCopy.ColumnMappings.Add("Deleted", "IsDeleted");
 
 
-
-
-
-            try
+            if (hasError)
             {
-                bulkCopy.WriteToServer(dt);
-                MessageBox.Show("Upload successful!");
+                MessageBox.Show("Upload failed: Please revise your patients data before uploading it again!");
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show($"Upload failed: {ex.Message}");
+                try
+                {
+                    bulkCopy.WriteToServer(dt);
+                    MessageBox.Show("Upload successful!");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Upload failed: {ex.Message}");
+                }
             }
+
+
+            
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        private void dataGridView1_RowPrePaint_1(object sender, DataGridViewRowPrePaintEventArgs e)
+        {
+            var grid = sender as DataGridView;
+            var row = grid.Rows[e.RowIndex];
+
+            if (row.Cells["ErrorMessage"].Value != null &&
+                !string.IsNullOrWhiteSpace(row.Cells["ErrorMessage"].Value.ToString()))
+            {
+                row.DefaultCellStyle.BackColor = Color.MistyRose; // or Color.Red
+                row.DefaultCellStyle.ForeColor = Color.Black;
+            }
+
         }
     }
 }
